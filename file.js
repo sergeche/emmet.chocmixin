@@ -2,7 +2,19 @@
 var fs = require('fs');
 /** @type NodePathModule */
 var path = require('path');
-var _ = require('underscore');
+var _ = require('./underscore');
+
+function bts(bytes) {
+	return _.map(bytes, function(b) {
+		return String.fromCharCode(b);
+	}).join('');
+
+}
+
+function isURL(path) {
+	var re = /^https?:\/\//;
+	return re.test(path);
+}
 
 module.exports = {
 	/**
@@ -10,10 +22,51 @@ module.exports = {
 	 * @param {String} path File's relative or absolute path
 	 * @return {String}
 	 */
-	read: function(path) {
-		return _.map(fs.readFileSync(path), function(b) {
-			return String.fromCharCode(b);
-		}).join('');
+	read: function(path, size, callback) {
+		var args = _.rest(arguments);
+		callback = _.last(args);
+		args = _.initial(args);
+		if (!args.length) {
+			size = 0;
+		}
+
+		if (isURL(path)) {
+			var req = require(/^https:/.test(path) ? 'https' : 'http').get(path, function(res) {
+				var bufs = [];
+				var totalLength = 0;
+				var finished = false;
+				res
+					.on('data', function(chunk) {
+						totalLength += chunk.length;
+						bufs.push(chunk);
+						if (size && totalLength >= size) {
+							finished = true;
+							callback(null, bts(Buffer.concat(bufs)));
+							req.abort();
+						}
+					})
+					.on('end', function() {
+						if (!finished) {
+							finished = true;
+							callback(null, bts(Buffer.concat(bufs)));
+						}
+					});
+			}).on('error', callback);
+		} else {
+			if (size) {
+				var fd = fs.openSync(path, 'r');
+				var buf = new Buffer(size);
+				fs.read(fd, buf, 0, size, null, function(err, bytesRead) {
+					if (err) {
+						return callback(err);
+					}
+
+					callback(0, bts(buf))
+				});
+			} else {
+				callback(null, bts(fs.readFileSync(path)));
+			}
+		}
 	},
 	
 	/**
@@ -41,6 +94,10 @@ module.exports = {
 	 * @return {String} Returns null if <code>fileName</code> cannot be located
 	 */
 	locateFile: function(editorFile, fileName) {
+		if (isURL(fileName)) {
+			return fileName;
+		}
+
 		var dirname = editorFile, f;
 		fileName = fileName.replace(/^\/+/, '');
 		while (dirname && dirname !== path.dirname(dirname)) {

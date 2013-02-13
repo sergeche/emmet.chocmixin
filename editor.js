@@ -1,5 +1,5 @@
-var _ = require('underscore');
-var emmet = require('./emmet');
+var _ = require('./underscore');
+var emmet = require('./emmet-app');
 
 /**
  * Chocolat editor proxy for Emmet toolkit 
@@ -137,17 +137,25 @@ module.exports = {
 		if (firstTabStop) {
 			firstTabStop.start += start;
 			firstTabStop.end += start;
-		} else {
-			firstTabStop = {
-				start: value.length + start,
-				end: value.length + start
-			};
 		}
-		
-		
-		var range = new Range(start, end - start);
-		this.recipe.replaceTextInRange(range, value);
-		this.createSelection(firstTabStop.start, firstTabStop.end);
+		//  else {
+		// 	firstTabStop = {
+		// 		start: value.length + start,
+		// 		end: value.length + start
+		// 	};
+		// }
+
+		Recipe.runOn(Editor.current(), function(recipe) {
+			var range = new Range(start, end - start);
+			recipe.replaceTextInRange(range, value);
+			if (firstTabStop) {
+				var ts = firstTabStop.start, te = firstTabStop.end;
+				recipe.selection = new Range(ts, te - ts);
+			}
+		});
+		// var range = new Range(start, end - start);
+		// this.recipe.replaceTextInRange(range, value);
+		// this.createSelection(firstTabStop.start, firstTabStop.end);
 	},
 	
 	/**
@@ -173,19 +181,8 @@ module.exports = {
 				break;
 			}
 		}
-		
-		if (syntax == 'html') {
-			// get the context tag
-			var caretPos = this.getCaretPos();
-			var pair = emmet.require('html_matcher').getTags(this.getContent(), caretPos);
-			if (pair && pair[0] && pair[0].type == 'tag' && pair[0].name.toLowerCase() == 'style') {
-				// check that we're actually inside the tag
-				if (pair[0].end <= caretPos && pair[1].start >= caretPos)
-					syntax = 'css';
-			}
-		}
-		
-		return syntax;
+
+		return emmet.require('actionUtils').detectSyntax(this, syntax);
 	},
 	
 	/**
@@ -193,11 +190,7 @@ module.exports = {
 	 * @return {String}
 	 */
 	getProfileName: function() {
-		var syntax = this.getSyntax();
-		if (syntax == 'xml' || syntax == 'xsl')
-			return 'xml';
-			
-		return 'xhtml';
+		return emmet.require('actionUtils').detectProfile(this);
 	},
 	
 	/**

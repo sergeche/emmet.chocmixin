@@ -1,5 +1,5 @@
 var _ = require('./underscore');
-var emmet = require('./emmet');
+var emmet = require('./emmet-app');
 var editorProxy = require('./editor');
 
 /** @type NodePathModule */
