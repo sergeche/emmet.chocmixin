@@ -117,13 +117,13 @@ module.exports = {
 	 * @param {String} fileName
 	 * @return {String}
 	 */
-	createPath: function(parent, fileName) {
+	createPath: function(parent, fileName, callback) {
 		var stat = fs.statSync(parent);
 		if (stat && stat.isDirectory()) {
 			parent = path.dirname(parent);
 		}
 		
-		return path.resolve(parent, fileName);
+		return callback(path.resolve(parent, fileName));
 	},
 	
 	/**
