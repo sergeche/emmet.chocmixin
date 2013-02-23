@@ -100,7 +100,7 @@ var bootstrap = emmet.require('bootstrap');
 bootstrap.loadSystemSnippets(JSON.parse(fs.readFileSync(path.join(__dirname, 'snippets.json'), 'utf-8')));
 
 // load extensions
-var extensionsPath = path.resolve('~/emmet');
+var extensionsPath = path.join(process.env.HOME, 'emmet');
 if (fs.existsSync(extensionsPath)) {
 	var files = [];
 	fs.readdirSync(extensionsPath).forEach(function(f) {

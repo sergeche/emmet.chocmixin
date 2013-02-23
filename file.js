@@ -17,21 +17,25 @@ function isURL(path) {
 }
 
 module.exports = {
-	/**
-	 * Read file content and return it
-	 * @param {String} path File's relative or absolute path
-	 * @return {String}
-	 */
-	read: function(path, size, callback) {
-		var args = _.rest(arguments);
-		callback = _.last(args);
+	_parseParams: function(args) {
+		var params = {
+			path: args[0],
+			size: 0
+		};
+
+		args = _.rest(args);
+		params.callback = _.last(args);
 		args = _.initial(args);
-		if (!args.length) {
-			size = 0;
+		if (args.length) {
+			params.size = args[0];
 		}
 
-		if (isURL(path)) {
-			var req = require(/^https:/.test(path) ? 'https' : 'http').get(path, function(res) {
+		return params;
+	},
+
+	_read: function(params, callback) {
+		if (isURL(params.path)) {
+			var req = require(/^https:/.test(params.path) ? 'https' : 'http').get(params.path, function(res) {
 				var bufs = [];
 				var totalLength = 0;
 				var finished = false;
@@ -39,34 +43,54 @@ module.exports = {
 					.on('data', function(chunk) {
 						totalLength += chunk.length;
 						bufs.push(chunk);
-						if (size && totalLength >= size) {
+						if (params.size && totalLength >= params.size) {
 							finished = true;
-							callback(null, bts(Buffer.concat(bufs)));
+							callback(null, Buffer.concat(bufs));
 							req.abort();
 						}
 					})
 					.on('end', function() {
 						if (!finished) {
 							finished = true;
-							callback(null, bts(Buffer.concat(bufs)));
+							callback(null, Buffer.concat(bufs));
 						}
 					});
 			}).on('error', callback);
 		} else {
-			if (size) {
-				var fd = fs.openSync(path, 'r');
-				var buf = new Buffer(size);
-				fs.read(fd, buf, 0, size, null, function(err, bytesRead) {
-					if (err) {
-						return callback(err);
-					}
-
-					callback(0, bts(buf))
+			if (params.size) {
+				var fd = fs.openSync(params.path, 'r');
+				var buf = new Buffer(params.size);
+				fs.read(fd, buf, 0, params.size, null, function(err, bytesRead) {
+					callback(err, buf)
 				});
 			} else {
-				callback(null, bts(fs.readFileSync(path)));
+				callback(null, fs.readFileSync(params.path));
 			}
 		}
+	},
+
+	/**
+	 * Reads binary file content and return it
+	 * @param {String} path File's relative or absolute path
+	 * @return {String}
+	 */
+	read: function(path, size, callback) {
+		var params = this._parseParams(arguments);
+		this._read(params, function(err, buf) {
+			params.callback(err, err ? '' : bts(buf));
+		});
+	},
+
+	/**
+	 * Read file content and return it
+	 * @param {String} path File's relative or absolute path
+	 * @return {String}
+	 */
+	readText: function(path, size, callback) {
+		var params = this._parseParams(arguments);
+		this._read(params, function(err, buf) {
+			params.callback(err, err ? '' : buf.toString());
+		});
 	},
 	
 	/**
