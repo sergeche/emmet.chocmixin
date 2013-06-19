@@ -172,6 +172,10 @@ module.exports = {
 	 */
 	getSyntax: function() {
 		var scope = Document.current().rootScope() || '';
+		if (scope.indexOf('.xsl')) {
+			return 'xsl';
+		}
+
 		var parts = scope.split('.');
 		var res = emmet.require('resources');
 		var syntax = 'html';

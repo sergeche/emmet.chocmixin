@@ -143,7 +143,7 @@ module.exports = {
 	 */
 	createPath: function(parent, fileName, callback) {
 		var stat = fs.statSync(parent);
-		if (stat && stat.isDirectory()) {
+		if (stat && !stat.isDirectory()) {
 			parent = path.dirname(parent);
 		}
 		
